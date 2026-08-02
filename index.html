@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#17324d" />
+  <title>Mi Control de Gastos</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #172033;
+      --muted: #687386;
+      --primary: #17324d;
+      --primary-2: #24577f;
+      --success: #18794e;
+      --danger: #b42318;
+      --warning: #b54708;
+      --border: #dce3ec;
+      --shadow: 0 10px 30px rgba(23, 50, 77, .08);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    button, input, select, textarea { font: inherit; }
+
+    .app {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    h1 { font-size: clamp(1.45rem, 4vw, 2.1rem); margin: 0; }
+    .subtitle { color: var(--muted); margin: 5px 0 0; }
+
+    .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    .btn {
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: transform .15s ease, opacity .15s ease;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-secondary { background: #e8eef5; color: var(--primary); }
+    .btn-danger { background: #fee4e2; color: var(--danger); }
+    .btn-small { padding: 7px 10px; font-size: .86rem; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .card h2, .card h3 { margin-top: 0; }
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .summary {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 15px;
+      box-shadow: var(--shadow);
+    }
+    .summary .label { color: var(--muted); font-size: .88rem; }
+    .summary .value { font-size: 1.35rem; font-weight: 800; margin-top: 5px; }
+    .income { color: var(--success); }
+    .expense { color: var(--danger); }
+    .balance.negative { color: var(--danger); }
+    .balance.positive { color: var(--primary); }
+
+    form {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field.full { grid-column: 1 / -1; }
+    label { font-size: .88rem; font-weight: 700; color: #344054; }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      padding: 10px 11px;
+      color: var(--text);
+      background: white;
+      outline: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: #8fb3d1;
+      box-shadow: 0 0 0 3px rgba(36, 87, 127, .12);
+    }
+
+    textarea { min-height: 72px; resize: vertical; }
+
+    .type-switch {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .type-switch input { display: none; }
+    .type-switch label {
+      display: block;
+      padding: 10px;
+      text-align: center;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      cursor: pointer;
+      background: #f8fafc;
+    }
+    #tipo-gasto:checked + label { background: #fff0ef; color: var(--danger); border-color: #f2b8b5; }
+    #tipo-ingreso:checked + label { background: #eaf7f0; color: var(--success); border-color: #a7d7bd; }
+
+    .budget-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .progress {
+      height: 12px;
+      background: #e8edf3;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+    .progress > div {
+      height: 100%;
+      width: 0%;
+      background: var(--success);
+      transition: width .25s ease;
+    }
+    .budget-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: .86rem;
+      margin-top: 7px;
+    }
+
+    .chart-wrap {
+      width: 100%;
+      min-height: 250px;
+      display: grid;
+      place-items: center;
+    }
+    canvas { max-width: 100%; }
+
+    .filters {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr auto;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+    }
+    th, td {
+      padding: 11px 9px;
+      text-align: left;
+      border-bottom: 1px solid #edf0f4;
+      font-size: .9rem;
+    }
+    th { color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; }
+    .amount { font-weight: 800; white-space: nowrap; }
+
+    .empty {
+      color: var(--muted);
+      text-align: center;
+      padding: 26px 10px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 8px;
+      background: #eef3f8;
+      font-size: .78rem;
+      font-weight: 700;
+    }
+
+    .notice {
+      border-left: 4px solid var(--warning);
+      background: #fff8eb;
+      padding: 10px 12px;
+      border-radius: 10px;
+      color: #7a2e0e;
+      font-size: .88rem;
+      margin-top: 12px;
+      display: none;
+    }
+
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: .82rem;
+      margin: 24px 0 8px;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, .5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      z-index: 50;
+    }
+    .modal {
+      width: min(560px, 100%);
+      background: white;
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 860px) {
+      .grid { grid-template-columns: 1fr; }
+      .summary-grid { grid-template-columns: 1fr; }
+      header { align-items: flex-start; flex-direction: column; }
+      .header-actions { width: 100%; }
+      .header-actions .btn { flex: 1; }
+    }
+
+    @media (max-width: 620px) {
+      .app { padding: 14px; }
+      form { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+      .filters { grid-template-columns: 1fr 1fr; }
+      .filters .btn { width: 100%; }
+      .budget-row { grid-template-columns: 1fr; }
+    }
+
+
+    .dashboard-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      margin: 4px 0 12px;
+    }
+    .dashboard-heading h2 { margin: 0; }
+    .dashboard-heading p { margin: 4px 0 0; color: var(--muted); }
+
+    .dashboard-overview {
+      display: grid;
+      grid-template-columns: 1.25fr .75fr;
+      gap: 18px;
+      margin-bottom: 18px;
+      align-items: stretch;
+    }
+
+    .welcome-panel {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 330px;
+      text-align: center;
+      background: linear-gradient(145deg, #ffffff, #edf4fa);
+    }
+    .welcome-icon {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 14px;
+      border-radius: 22px;
+      display: grid;
+      place-items: center;
+      font-size: 2rem;
+      background: #e4eef7;
+    }
+    .welcome-panel h2 { margin-bottom: 8px; }
+    .welcome-panel p {
+      max-width: 360px;
+      margin: 0 auto 18px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    .welcome-panel .btn { align-self: center; }
+    .welcome-status {
+      margin-top: 14px;
+      color: var(--success);
+      font-weight: 700;
+      font-size: .9rem;
+    }
+
+    .chart-card { min-height: 330px; }
+    .form-anchor { scroll-margin-top: 18px; }
+
+    @media (max-width: 860px) {
+      .dashboard-overview { grid-template-columns: 1fr; }
+      .welcome-panel { min-height: 260px; }
+    }
+
+    @media (max-width: 620px) {
+      .dashboard-heading { align-items: flex-start; flex-direction: column; }
+      .dashboard-heading input { max-width: none !important; }
+    }
+
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div>
+        <h1>Mi Control de Gastos</h1>
+        <p class="subtitle">Tu panel financiero personal, visible desde el primer momento.</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary" id="btn-backup">Respaldo</button>
+        <button class="btn btn-secondary" id="btn-csv">Exportar CSV</button>
+      </div>
+    </header>
+
+    <section class="dashboard-heading" aria-label="Encabezado del panel">
+      <div>
+        <h2>Panel visual</h2>
+        <p>Resumen del mes seleccionado, aunque todavía no hayas registrado movimientos.</p>
+      </div>
+      <input type="month" id="mes-filtro" style="max-width:190px" aria-label="Mes del panel" />
+    </section>
+
+    <section class="summary-grid" aria-label="Resumen mensual">
+      <article class="summary">
+        <div class="label">Ingresos del mes</div>
+        <div class="value income" id="total-ingresos">S/ 0.00</div>
+      </article>
+      <article class="summary">
+        <div class="label">Gastos del mes</div>
+        <div class="value expense" id="total-gastos">S/ 0.00</div>
+      </article>
+      <article class="summary">
+        <div class="label">Saldo del mes</div>
+        <div class="value balance positive" id="saldo">S/ 0.00</div>
+      </article>
+    </section>
+
+    <section class="dashboard-overview">
+      <article class="card chart-card">
+        <div class="section-title">
+          <div>
+            <h2 style="margin-bottom:4px">Gastos por categoría</h2>
+            <span style="color:var(--muted);font-size:.88rem">El gráfico se completará automáticamente.</span>
+          </div>
+          <select id="moneda" style="max-width:150px" aria-label="Moneda">
+            <option value="PEN">Soles (S/)</option>
+            <option value="USD">Dólares ($)</option>
+            <option value="EUR">Euros (€)</option>
+          </select>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="category-chart" width="520" height="300" aria-label="Gráfico de gastos por categoría"></canvas>
+        </div>
+      </article>
+
+      <article class="card welcome-panel">
+        <div class="welcome-icon" aria-hidden="true">📊</div>
+        <h2 id="welcome-title">Tu panel está listo</h2>
+        <p id="welcome-text">Todavía no tienes movimientos este mes. Registra tu primer gasto y aquí verás inmediatamente tus totales y categorías.</p>
+        <button class="btn btn-primary" id="btn-first-expense" type="button">Registrar primer gasto</button>
+        <div class="welcome-status" id="welcome-status">Todos los indicadores empiezan en cero.</div>
+      </article>
+    </section>
+
+    <section class="grid">
+      <div>
+        <article class="card form-anchor" id="registro">
+          <div class="section-title">
+            <h2>Registrar movimiento</h2>
+            <span class="chip" id="fecha-hoy"></span>
+          </div>
+
+          <form id="movement-form">
+            <div class="field full">
+              <label>Tipo</label>
+              <div class="type-switch">
+                <div>
+                  <input type="radio" name="tipo" id="tipo-gasto" value="gasto" checked />
+                  <label for="tipo-gasto">Gasto</label>
+                </div>
+                <div>
+                  <input type="radio" name="tipo" id="tipo-ingreso" value="ingreso" />
+                  <label for="tipo-ingreso">Ingreso</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="fecha">Fecha</label>
+              <input type="date" id="fecha" required />
+            </div>
+
+            <div class="field">
+              <label for="monto">Monto</label>
+              <input type="number" id="monto" min="0.01" step="0.01" placeholder="0.00" required />
+            </div>
+
+            <div class="field">
+              <label for="categoria">Categoría</label>
+              <select id="categoria" required></select>
+            </div>
+
+            <div class="field">
+              <label for="metodo">Método de pago</label>
+              <select id="metodo">
+                <option>Efectivo</option>
+                <option>Tarjeta de débito</option>
+                <option>Tarjeta de crédito</option>
+                <option>Transferencia</option>
+                <option>Yape / Plin</option>
+                <option>Otro</option>
+              </select>
+            </div>
+
+            <div class="field full">
+              <label for="descripcion">Descripción</label>
+              <textarea id="descripcion" placeholder="Ej.: almuerzo, pasaje, pago de internet..."></textarea>
+            </div>
+
+            <div class="field full">
+              <button type="submit" class="btn btn-primary">Guardar movimiento</button>
+            </div>
+          </form>
+        </article>
+
+        <article class="card" style="margin-top:18px">
+          <div class="section-title">
+            <h2>Historial de movimientos</h2>
+            <span class="chip">Mes del panel</span>
+          </div>
+
+          <div class="filters">
+            <select id="filtro-tipo">
+              <option value="">Todos los tipos</option>
+              <option value="gasto">Solo gastos</option>
+              <option value="ingreso">Solo ingresos</option>
+            </select>
+            <select id="filtro-categoria">
+              <option value="">Todas las categorías</option>
+            </select>
+            <input id="filtro-texto" placeholder="Buscar descripción" />
+            <button class="btn btn-secondary" id="btn-limpiar" type="button">Limpiar</button>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Tipo</th>
+                  <th>Categoría</th>
+                  <th>Descripción</th>
+                  <th>Método</th>
+                  <th>Monto</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="movements-body"></tbody>
+            </table>
+          </div>
+          <div id="empty-state" class="empty">No hay movimientos en este mes. Usa el formulario de arriba para comenzar.</div>
+        </article>
+      </div>
+
+      <div>
+        <article class="card">
+          <h2>Presupuesto mensual</h2>
+          <div class="budget-row">
+            <div class="field">
+              <label for="presupuesto">Límite de gastos</label>
+              <input type="number" id="presupuesto" min="0" step="0.01" placeholder="Ej.: 1500" />
+            </div>
+            <button class="btn btn-primary" id="btn-presupuesto" type="button">Guardar</button>
+          </div>
+          <div class="progress" aria-label="Avance del presupuesto">
+            <div id="budget-bar"></div>
+          </div>
+          <div class="budget-meta">
+            <span id="budget-used">Usado: S/ 0.00</span>
+            <span id="budget-left">Disponible: S/ 0.00</span>
+          </div>
+          <div class="notice" id="budget-notice"></div>
+        </article>
+
+        <article class="card" style="margin-top:18px">
+          <h3>Cómo usar este panel</h3>
+          <p style="color:var(--muted);line-height:1.55;margin-bottom:0">
+            Los cuadros superiores siempre estarán visibles. Cada vez que guardes un gasto o ingreso, el resumen, el presupuesto y el gráfico se actualizarán solos.
+          </p>
+        </article>
+
+        <article class="card" style="margin-top:18px">
+          <h3>Consejo</h3>
+          <p id="tip-text" style="margin-bottom:0;color:var(--muted)">
+            Registra cada gasto el mismo día para que tu control sea más preciso.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <footer>
+      Tus datos se guardan únicamente en este navegador. Usa “Respaldo” para descargar una copia.
+    </footer>
+  </main>
+
+  <div class="modal-backdrop" id="backup-modal">
+    <div class="modal">
+      <h2>Respaldo de datos</h2>
+      <p style="color:var(--muted)">Descarga una copia o restaura un archivo guardado anteriormente.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btn-close-modal">Cerrar</button>
+        <button class="btn btn-secondary" id="btn-import">Importar respaldo</button>
+        <button class="btn btn-primary" id="btn-export-json">Descargar respaldo</button>
+      </div>
+      <input type="file" id="backup-file" accept=".json,application/json" hidden />
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const STORAGE_KEY = "control_gastos_movimientos_v1";
+      const SETTINGS_KEY = "control_gastos_config_v1";
+
+      const categories = {
+        gasto: ["Alimentación", "Transporte", "Vivienda", "Servicios", "Salud", "Educación", "Entretenimiento", "Compras", "Deudas", "Otros"],
+        ingreso: ["Sueldo", "Ventas", "Trabajo independiente", "Bonos", "Regalos", "Otros ingresos"]
+      };
+
+      const tips = [
+        "Registra cada gasto el mismo día para que tu control sea más preciso.",
+        "Revisa los gastos pequeños: juntos pueden representar una parte importante del mes.",
+        "Separa primero el dinero para ahorro y obligaciones antes de gastar.",
+        "Compara tus categorías cada fin de semana para detectar excesos a tiempo.",
+        "Evita usar el saldo disponible de la tarjeta como si fuera ingreso."
+      ];
+
+      const $ = (id) => document.getElementById(id);
+      const today = new Date();
+      const localDate = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+      const localMonth = localDate.slice(0, 7);
+
+      let movements = loadJSON(STORAGE_KEY, []);
+      let settings = loadJSON(SETTINGS_KEY, {
+        budgetByMonth: {},
+        currency: "PEN"
+      });
+
+      function loadJSON(key, fallback) {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(key));
+          return parsed ?? fallback;
+        } catch {
+          return fallback;
+        }
+      }
+
+      function saveAll() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(movements));
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      }
+
+      function currencySymbol() {
+        return settings.currency === "USD" ? "$" : settings.currency === "EUR" ? "€" : "S/";
+      }
+
+      function money(value) {
+        const locale = settings.currency === "PEN" ? "es-PE" : settings.currency === "EUR" ? "es-ES" : "en-US";
+        return new Intl.NumberFormat(locale, {
+          style: "currency",
+          currency: settings.currency,
+          minimumFractionDigits: 2
+        }).format(Number(value || 0));
+      }
+
+      function escapeHTML(value = "") {
+        return String(value).replace(/[&<>"']/g, char => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+        }[char]));
+      }
+
+      function currentType() {
+        return document.querySelector('input[name="tipo"]:checked').value;
+      }
+
+      function fillCategories() {
+        const type = currentType();
+        $("categoria").innerHTML = categories[type]
+          .map(c => `<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join("");
+
+        const allCategories = [...new Set([...categories.gasto, ...categories.ingreso])].sort();
+        $("filtro-categoria").innerHTML =
+          '<option value="">Todas las categorías</option>' +
+          allCategories.map(c => `<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join("");
+      }
+
+      function selectedMonth() {
+        return $("mes-filtro").value || localMonth;
+      }
+
+      function monthMovements() {
+        const month = selectedMonth();
+        return movements.filter(m => m.fecha.startsWith(month));
+      }
+
+      function totals() {
+        const list = monthMovements();
+        return list.reduce((acc, m) => {
+          acc[m.tipo] += Number(m.monto);
+          return acc;
+        }, { gasto: 0, ingreso: 0 });
+      }
+
+      function renderSummary() {
+        const t = totals();
+        const balance = t.ingreso - t.gasto;
+        $("total-ingresos").textContent = money(t.ingreso);
+        $("total-gastos").textContent = money(t.gasto);
+        $("saldo").textContent = money(balance);
+        $("saldo").className = `value balance ${balance < 0 ? "negative" : "positive"}`;
+      }
+
+      function filteredMovements() {
+        const month = selectedMonth();
+        const type = $("filtro-tipo").value;
+        const category = $("filtro-categoria").value;
+        const text = $("filtro-texto").value.trim().toLowerCase();
+
+        return movements
+          .filter(m => m.fecha.startsWith(month))
+          .filter(m => !type || m.tipo === type)
+          .filter(m => !category || m.categoria === category)
+          .filter(m => !text || `${m.descripcion} ${m.categoria} ${m.metodo}`.toLowerCase().includes(text))
+          .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.createdAt - a.createdAt);
+      }
+
+      function renderTable() {
+        const list = filteredMovements();
+        $("movements-body").innerHTML = list.map(m => `
+          <tr>
+            <td>${escapeHTML(new Date(m.fecha + "T12:00:00").toLocaleDateString("es-PE"))}</td>
+            <td><span class="chip">${m.tipo === "gasto" ? "Gasto" : "Ingreso"}</span></td>
+            <td>${escapeHTML(m.categoria)}</td>
+            <td>${escapeHTML(m.descripcion || "—")}</td>
+            <td>${escapeHTML(m.metodo || "—")}</td>
+            <td class="amount ${m.tipo === "gasto" ? "expense" : "income"}">
+              ${m.tipo === "gasto" ? "−" : "+"}${money(m.monto)}
+            </td>
+            <td><button class="btn btn-danger btn-small" data-delete="${m.id}">Eliminar</button></td>
+          </tr>
+        `).join("");
+
+        $("empty-state").style.display = list.length ? "none" : "block";
+
+        document.querySelectorAll("[data-delete]").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const id = btn.getAttribute("data-delete");
+            if (confirm("¿Eliminar este movimiento?")) {
+              movements = movements.filter(m => m.id !== id);
+              saveAll();
+              renderAll();
+            }
+          });
+        });
+      }
+
+      function budgetForMonth() {
+        return Number(settings.budgetByMonth[selectedMonth()] || 0);
+      }
+
+      function renderBudget() {
+        const budget = budgetForMonth();
+        const spent = totals().gasto;
+        const pct = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
+        const left = budget - spent;
+
+        $("presupuesto").value = budget || "";
+        $("budget-bar").style.width = `${pct}%`;
+        $("budget-bar").style.background = pct >= 100 ? "var(--danger)" : pct >= 80 ? "var(--warning)" : "var(--success)";
+        $("budget-used").textContent = `Usado: ${money(spent)}`;
+        $("budget-left").textContent = budget ? `Disponible: ${money(left)}` : "Define un presupuesto";
+
+        const notice = $("budget-notice");
+        if (!budget) {
+          notice.style.display = "none";
+        } else if (spent > budget) {
+          notice.style.display = "block";
+          notice.textContent = `Has excedido tu presupuesto por ${money(spent - budget)}.`;
+        } else if (spent >= budget * 0.8) {
+          notice.style.display = "block";
+          notice.textContent = `Ya utilizaste ${Math.round((spent / budget) * 100)}% de tu presupuesto.`;
+        } else {
+          notice.style.display = "none";
+        }
+      }
+
+      function renderChart() {
+        const canvas = $("category-chart");
+        const ctx = canvas.getContext("2d");
+        const dpr = window.devicePixelRatio || 1;
+        const cssWidth = Math.min(520, canvas.parentElement.clientWidth || 520);
+        const cssHeight = 300;
+
+        canvas.width = cssWidth * dpr;
+        canvas.height = cssHeight * dpr;
+        canvas.style.width = cssWidth + "px";
+        canvas.style.height = cssHeight + "px";
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+        const grouped = {};
+        monthMovements()
+          .filter(m => m.tipo === "gasto")
+          .forEach(m => grouped[m.categoria] = (grouped[m.categoria] || 0) + Number(m.monto));
+
+        const entries = Object.entries(grouped).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+        ctx.font = "13px system-ui";
+        ctx.fillStyle = "#687386";
+
+        if (!entries.length) {
+          ctx.textAlign = "center";
+          ctx.fillText("Registra gastos para ver el gráfico.", cssWidth / 2, cssHeight / 2);
+          return;
+        }
+
+        const left = 125;
+        const right = 70;
+        const top = 18;
+        const rowH = Math.min(34, (cssHeight - 38) / entries.length);
+        const max = Math.max(...entries.map(([, v]) => v));
+
+        entries.forEach(([name, value], index) => {
+          const y = top + index * rowH;
+          const width = ((cssWidth - left - right) * value) / max;
+
+          ctx.textAlign = "right";
+          ctx.fillStyle = "#344054";
+          const shortName = name.length > 16 ? name.slice(0, 15) + "…" : name;
+          ctx.fillText(shortName, left - 10, y + 17);
+
+          ctx.fillStyle = "#dfe8f1";
+          ctx.fillRect(left, y + 4, cssWidth - left - right, 17);
+
+          ctx.fillStyle = "#24577f";
+          ctx.fillRect(left, y + 4, Math.max(width, 2), 17);
+
+          ctx.textAlign = "left";
+          ctx.fillStyle = "#344054";
+          ctx.fillText(`${currencySymbol()} ${value.toFixed(2)}`, left + width + 7, y + 17);
+        });
+      }
+
+      function renderTip() {
+        const dayIndex = Math.floor(Date.now() / 86400000) % tips.length;
+        $("tip-text").textContent = tips[dayIndex];
+      }
+
+      function renderWelcome() {
+        const count = monthMovements().length;
+        if (count === 0) {
+          $("welcome-title").textContent = "Tu panel está listo";
+          $("welcome-text").textContent = "Todavía no tienes movimientos este mes. Registra tu primer gasto y aquí verás inmediatamente tus totales y categorías.";
+          $("btn-first-expense").textContent = "Registrar primer gasto";
+          $("welcome-status").textContent = "Todos los indicadores empiezan en cero.";
+        } else {
+          $("welcome-title").textContent = "Panel actualizado";
+          $("welcome-text").textContent = `Ya tienes ${count} movimiento${count === 1 ? "" : "s"} en el mes seleccionado. Los indicadores y el gráfico están al día.`;
+          $("btn-first-expense").textContent = "Registrar otro movimiento";
+          $("welcome-status").textContent = "Los cambios se guardan automáticamente en este navegador.";
+        }
+      }
+
+      function renderAll() {
+        renderSummary();
+        renderTable();
+        renderBudget();
+        renderChart();
+        renderTip();
+        renderWelcome();
+      }
+
+      $("btn-first-expense").addEventListener("click", () => {
+        $("registro").scrollIntoView({ behavior: "smooth", block: "start" });
+        setTimeout(() => $("monto").focus(), 450);
+      });
+
+      $("movement-form").addEventListener("submit", event => {
+        event.preventDefault();
+        const amount = Number($("monto").value);
+
+        if (!Number.isFinite(amount) || amount <= 0) {
+          alert("Ingresa un monto válido.");
+          return;
+        }
+
+        movements.push({
+          id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random(),
+          tipo: currentType(),
+          fecha: $("fecha").value,
+          monto: amount,
+          categoria: $("categoria").value,
+          metodo: $("metodo").value,
+          descripcion: $("descripcion").value.trim(),
+          createdAt: Date.now()
+        });
+
+        saveAll();
+        $("monto").value = "";
+        $("descripcion").value = "";
+        renderAll();
+        $("monto").focus();
+      });
+
+      document.querySelectorAll('input[name="tipo"]').forEach(el => el.addEventListener("change", fillCategories));
+
+      $("btn-presupuesto").addEventListener("click", () => {
+        const value = Number($("presupuesto").value || 0);
+        if (value < 0) {
+          alert("El presupuesto no puede ser negativo.");
+          return;
+        }
+        settings.budgetByMonth[selectedMonth()] = value;
+        saveAll();
+        renderBudget();
+      });
+
+      ["mes-filtro", "filtro-tipo", "filtro-categoria"].forEach(id => {
+        $(id).addEventListener("change", renderAll);
+      });
+      $("filtro-texto").addEventListener("input", renderTable);
+
+      $("btn-limpiar").addEventListener("click", () => {
+        $("filtro-tipo").value = "";
+        $("filtro-categoria").value = "";
+        $("filtro-texto").value = "";
+        renderTable();
+      });
+
+      $("moneda").addEventListener("change", () => {
+        settings.currency = $("moneda").value;
+        saveAll();
+        renderAll();
+      });
+
+      $("btn-csv").addEventListener("click", () => {
+        const list = filteredMovements();
+        if (!list.length) {
+          alert("No hay movimientos para exportar con los filtros actuales.");
+          return;
+        }
+
+        const rows = [
+          ["Fecha", "Tipo", "Categoría", "Descripción", "Método", "Monto", "Moneda"],
+          ...list.map(m => [m.fecha, m.tipo, m.categoria, m.descripcion, m.metodo, m.monto, settings.currency])
+        ];
+
+        const csv = rows.map(row => row.map(value => {
+          const text = String(value ?? "").replace(/"/g, '""');
+          return `"${text}"`;
+        }).join(",")).join("\n");
+
+        downloadFile(`movimientos-${selectedMonth()}.csv`, "\uFEFF" + csv, "text/csv;charset=utf-8");
+      });
+
+      function downloadFile(name, content, type) {
+        const blob = new Blob([content], { type });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      $("btn-backup").addEventListener("click", () => $("backup-modal").style.display = "flex");
+      $("btn-close-modal").addEventListener("click", () => $("backup-modal").style.display = "none");
+      $("backup-modal").addEventListener("click", event => {
+        if (event.target === $("backup-modal")) $("backup-modal").style.display = "none";
+      });
+
+      $("btn-export-json").addEventListener("click", () => {
+        const payload = JSON.stringify({
+          app: "Mi Control de Gastos",
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          movements,
+          settings
+        }, null, 2);
+        downloadFile(`respaldo-gastos-${localDate}.json`, payload, "application/json");
+      });
+
+      $("btn-import").addEventListener("click", () => $("backup-file").click());
+      $("backup-file").addEventListener("change", async event => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        try {
+          const data = JSON.parse(await file.text());
+          if (!Array.isArray(data.movements) || !data.settings) throw new Error("Formato no válido");
+          if (!confirm("Esto reemplazará los datos actuales. ¿Continuar?")) return;
+
+          movements = data.movements;
+          settings = data.settings;
+          saveAll();
+          $("moneda").value = settings.currency || "PEN";
+          $("backup-modal").style.display = "none";
+          renderAll();
+          alert("Respaldo restaurado correctamente.");
+        } catch {
+          alert("No se pudo importar el archivo. Verifica que sea un respaldo válido.");
+        } finally {
+          event.target.value = "";
+        }
+      });
+
+      $("fecha").value = localDate;
+      $("mes-filtro").value = localMonth;
+      $("fecha-hoy").textContent = new Date().toLocaleDateString("es-PE", {
+        weekday: "long", day: "2-digit", month: "long"
+      });
+      $("moneda").value = settings.currency || "PEN";
+
+      fillCategories();
+      renderAll();
+      window.addEventListener("resize", renderChart);
+    })();
+  </script>
+</body>
+</html>
